@@ -1,28 +1,14 @@
 // Creating a Grocery Shop Inventory System:
 
-/* TODO:
-1. Update product's info and delete some products.
-2. Will try using trie data structure. --- (DONE)
-3. First search product by trie   ---- (DONE)
-4. Apply filters to products, like price range, etc.
-5. I will generate Invoices for customers and owner can retrieve them. (THIS WILL BE DONE BY HASHTABLE).
-6. Customer's shopping cart
-
-7. Imagine I got stocks by some producer and it isn't selling, so returning back those products.
-8. Adding a Expiry Date.
-*/
-
-/* DOUBTS:
-1. Am I a customer or retailer/seller?
-Soln: Currently working as a retailer.
-*/
 
 #include<bits/stdc++.h>
 #include<vector>
 #include<iostream>
 #include<string>
+#include<unordered_map>
 #include<deque>
 #include<algorithm>
+#include<chrono>
 using namespace std;
 
 struct GroceryList {
@@ -46,6 +32,22 @@ struct ShoppingCartItem {
 		price(groceryItem.price),
 		quantity(addedQuantity) {}
 };
+
+struct Transaction {
+	string transactionId;
+	double totalCost;
+	string timestamp;
+
+	Transaction() {
+		// Generate a unique transaction ID based on timestamp
+		transactionId = to_string(chrono::system_clock::to_time_t(chrono::system_clock::now()));
+		// Get the current timestamp
+		timestamp = to_string(chrono::system_clock::to_time_t(chrono::system_clock::now()));
+		totalCost = 0.0; // Initialize total cost
+	}
+};
+
+unordered_map<string, Transaction> invoices;
 
 
 // Searching part:
@@ -279,6 +281,11 @@ void update_inventory(GroceryList* product, long long int quantity) {
 	if ((product != nullptr) && product->quantity >= quantity) {
 		product->quantity -= quantity;
 		cout << "Inventory updated successfully." << endl;
+
+		const long long int lowStockThreshold = 2;
+		if (product->quantity <= lowStockThreshold) {
+			cout << "ALERT: Low stock for product '" << product->name << "'. Quantity: " << product->quantity << endl;
+		}
 	}
 	else {
 		cout << "Error: Not enough stock available!!!" << endl;
@@ -472,6 +479,86 @@ void display_inventory(GroceryList*& head) {
 	}
 }
 
+void modifyProductInfo(GroceryList* head) {
+	cout << "Enter the name of the product you want to modify: ";
+	string productName;
+	cin >> productName;
+
+	vector<GroceryList*> foundProducts = searchGrocery(root, root1, head);
+
+	if (!foundProducts.empty()) {
+		// Display the found products for the user to choose from
+		cout << "Multiple products found with the given search criteria. Please choose one from the list:" << endl;
+
+		for (size_t i = 0; i < foundProducts.size(); ++i) {
+			cout << i + 1 << ". Category: " << foundProducts[i]->category << "\tName: " << foundProducts[i]->name
+				<< "\tPrice: " << foundProducts[i]->price << "\tQuantity: " << foundProducts[i]->quantity << endl;
+		}
+
+		cout << "Enter the number corresponding to the product you want to modify:" << endl;
+		int choice;
+		cin >> choice;
+
+		if (choice >= 1 && static_cast<size_t>(choice) <= foundProducts.size()) {
+			GroceryList* chosenProduct = foundProducts[choice - 1];
+
+			cout << "Current information for product '" << chosenProduct->name << "':" << endl;
+			cout << "Category: " << chosenProduct->category << "\tPrice: " << chosenProduct->price << "\tQuantity: " << chosenProduct->quantity << endl;
+
+			// Update the product information
+			cout << "Enter new quantity: ";
+			cin >> chosenProduct->quantity;
+
+			cout << "Enter new price: ";
+			cin >> chosenProduct->price;
+
+			cout << "Product information updated successfully." << endl;
+		}
+		else {
+			cout << "Invalid choice. Please enter a valid number." << endl;
+		}
+	}
+	else {
+		cout << "Product not found. Cannot modify information." << endl;
+	}
+}
+
+void removeProduct(GroceryList*& head, const string& productName) {
+	// Convert the product name to lowercase for case-insensitive comparison
+	string productNameLower = productName;
+	transform(productNameLower.begin(), productNameLower.end(), productNameLower.begin(), ::tolower);
+
+	GroceryList* temp = head;
+	while (temp != nullptr && temp->name != productNameLower) {
+		temp = temp->next;
+	}
+
+	if (temp != nullptr) {
+		// Remove the product from the linked list
+		if (temp->prev != nullptr) {
+			temp->prev->next = temp->next;
+		}
+		else {
+			head = temp->next;
+		}
+
+		if (temp->next != nullptr) {
+			temp->next->prev = temp->prev;
+		}
+
+		// Delete the node to free memory
+		delete temp;
+
+		// Remove the product from the Trie
+		delete_key(root, productNameLower);
+
+		cout << "Product '" << productName << "' removed successfully.\n";
+	}
+	else {
+		cout << "Error: Product not found.\n";
+	}
+}
+
 /*void insert_key_of_grocery_name(TrieNode* root, TrieNode* root1, vector<string>& item, vector<string>& itemCategory) {
 	int n = item.size();
 	for (int i = 0; i < n; i++) {
@@ -661,71 +748,137 @@ void returnProductToInventory(GroceryList* head, vector<ShoppingCartItem>& shopp
 	}
 }
 
+bool OwnerAuthentication() {
+	// Defining valid owner credentials:
+	string validUserName = "Karan_Kumawat";
+	string validPassword = "220150005";
+
+	// Asking for credentials:
+	cout << "Enter your UserName:" << endl;
+	string enteredUserName;
+	cin >> enteredUserName;
+
+	cout << "Enter Password:" << endl;
+	string enteredPassword;
+	cin >> enteredPassword;
+
+	return (enteredUserName == validUserName && enteredPassword == validPassword);
+}
+
+void generateInvoice(vector<ShoppingCartItem>& shoppingCart) {
+	Transaction transaction;
+	// Add information from the shopping cart to the transaction
+	for (const auto& cartItem : shoppingCart) {
+		transaction.totalCost += cartItem.price * cartItem.quantity;
+		// Add other relevant information to the transaction
+	}
+
+	// Store the transaction in the hashtable with the transaction ID as the key
+	invoices[transaction.transactionId] = transaction;
+
+	// Clear the shopping cart after generating the invoice
+	shoppingCart.clear();
+
+	cout << "Invoice generated successfully. Transaction ID: " << transaction.transactionId << endl;
+	cout << "THANK YOU!! VISIT US AGAIN AMIGO!!!" << endl;
+}
+
+
+void retrieveInvoice(const string& transactionId) {
+	if (invoices.find(transactionId) != invoices.end()) {
+		Transaction& transaction = invoices[transactionId];
+		// Print or process the retrieved invoice information
+		cout << "Transaction ID: " << transaction.transactionId << "\nTimestamp: " << transaction.timestamp
+			<< "\nTotal Cost: " << transaction.totalCost << endl;
+	}
+	else {
+		cout << "Invoice with Transaction ID " << transactionId << " not found." << endl;
+	}
+}
+
 
 int main() {
 	cout << "Welcome Sir/Ma'am, we have a variety of things in here. How can I help you today?" << endl;
+
 
 	GroceryList* head = nullptr;
 	vector<ShoppingCartItem> shoppingCart;
 
 	int userChoice;
 	int ownerChoice;
+	string transactionIdToRetrieve;
+	string pName;
 
 	int role;
 
-	while (true) {
-		cout << "Are you a customer or owner? Press 1 for owner & 2 for customer." << endl;
-		cin >> role;
-		if (role == 1) {
-			cout << "Welcome Sir/Ma'am. How can I help you today?" << endl;
-			cout << "1. Add products to Inventory\n2. Display Inventory\n3. Exit\n";
-			cout << "Enter your choice: ";
-			cin >> ownerChoice;
+	if (OwnerAuthentication()) {
+		cout << "Owner Authentication Successful. You have access to owner functionalities." << endl;
 
-			switch (ownerChoice) {
-			case 1:
-				//addToShoppingCart(head, shoppingCart);
-				create_head_node(head);
-				stock_up_grocery_list(head);
-				break;
-			case 2:
-				display_inventory(head);
-				break;
-			case 3:
-				//deleteTrie(root);
-				break;
-			default:
-				cout << "Invalid choice. Please try again.\n";
-			}
-		}
-		else if (role == 2) {
-			cout << "Welcome Sir/Ma'am. How can I help you today?" << endl;
-			cout << "1. Add product to shopping cart\n2. Return product to inventory\n3. Display shopping cart with total cost\n4. Apply Filters\n5. Exit\n";
-			cout << "Enter your choice: ";
-			cin >> userChoice;
+		while (true) {
+			cout << "Are you a customer or owner? Press 1 for owner & 2 for customer." << endl;
+			cin >> role;
+			if (role == 1) {
+				cout << "Welcome Sir/Ma'am. How can I help you today?" << endl;
+				cout << "1. Add products to Inventory\n2. Display Inventory\n3. Retrieve Invoices\n4. Restock/Modify product details.\n5. Remove product\n6.Exit\n";
+				cout << "Enter your choice: ";
+				cin >> ownerChoice;
 
-			switch (userChoice) {
-			case 1:
-				addToShoppingCart(head, shoppingCart);
-				break;
-			case 2:
-				returnProductToInventory(head, shoppingCart);
-				break;
-			case 3:
-				display_total_cost(shoppingCart);
-				break;
-			case 4:
-				applyFilters(head);
-				break;
-			case 5:
-				//deleteTrie(root);
-				break;
-			default:
-				cout << "Invalid choice. Please try again.\n";
+				switch (ownerChoice) {
+				case 1:
+					//addToShoppingCart(head, shoppingCart);
+					create_head_node(head);
+					stock_up_grocery_list(head);
+					break;
+				case 2:
+					display_inventory(head);
+					break;
+				case 3:
+					cout << "Enter the Transaction ID to retrieve the invoice: ";
+					cin >> transactionIdToRetrieve;
+					retrieveInvoice(transactionIdToRetrieve);
+					break;
+				case 4:
+					modifyProductInfo(head);
+					break;
+				case 5:
+					cout << "Enter the name of product you want to remove: ";
+					cin >> pName;
+					removeProduct(head, pName);
+				default:
+					cout << "Invalid choice. Please try again.\n";
+				}
 			}
-		}
-		else {
-			cout << "Invalid Choice!! Try Again." << endl;
+			else if (role == 2) {
+				cout << "Welcome Sir/Ma'am. How can I help you today?" << endl;
+				cout << "1. Add product to shopping cart\n2. Return product to inventory\n3. Display shopping cart with total cost\n4. Apply Filters\n5. Generate Invoice\n6. Exit\n";
+				cout << "Enter your choice: ";
+				cin >> userChoice;
+
+				switch (userChoice) {
+				case 1:
+					addToShoppingCart(head, shoppingCart);
+					break;
+				case 2:
+					returnProductToInventory(head, shoppingCart);
+					break;
+				case 3:
+					display_total_cost(shoppingCart);
+					break;
+				case 4:
+					applyFilters(head);
+					break;
+				case 5:
+					generateInvoice(shoppingCart);
+					break;
+				case 6:
+					break;
+				default:
+					cout << "Invalid choice. Please try again.\n";
+				}
+			}
+			else {
+				cout << "Invalid Choice!! Try Again." << endl;
+			}
 		}
 	}
 	deleteTrie(root);
