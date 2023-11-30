@@ -882,6 +882,7 @@ int main() {
 		}
 	}
 	deleteTrie(root);
+	deleteTrie(root1);
 	//cout << root << endl;
 	return 0;
 }
