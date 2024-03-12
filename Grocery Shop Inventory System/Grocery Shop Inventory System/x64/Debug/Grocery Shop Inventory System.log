@@ -1,0 +1,3 @@
+﻿  main.cpp
+C:\Users\ASUS\source\repos\Grocery Shop Inventory System\Grocery Shop Inventory System\main.cpp(271,8): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Grocery Shop Inventory System.vcxproj -> C:\Users\ASUS\source\repos\Grocery Shop Inventory System\x64\Debug\Grocery Shop Inventory System.exe
